@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify, request
 from flask_migrate import Migrate
 from flask_cors import CORS
-from models import db, User, Profile, Contact
+from models import db, User, Profile, Contact, Role
 
 app = Flask(__name__)
 app.url_map.slashes = False
@@ -31,6 +31,8 @@ def get_users():
 @app.route('/api/users', methods=['POST'])
 def post_users():
 
+    #print(request.get_json())
+
     name = request.json.get('name')
     lastname = request.json.get('lastname')
     email = request.json.get('email')
@@ -41,6 +43,8 @@ def post_users():
     facebook = request.json.get('facebook', "")
     instagram = request.json.get('instagram', "")
     linkedin = request.json.get('linkedin', "")
+
+    roles = request.json.get("roles")
 
     if not email: return jsonify({ "status": False, "msg": "Email is required!"}), 400
 
@@ -69,6 +73,10 @@ def post_users():
     user.lastname = lastname
     user.email = email
     user.password = password
+
+    for id in roles:
+        role = Role.query.get(id)
+        user.roles.append(role)
 
     profile = Profile()
     profile.bio = bio

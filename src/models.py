@@ -11,6 +11,7 @@ class User(db.Model):
     password = db.Column(db.String(100), nullable=False)
     profile = db.relationship('Profile', cascade="all, delete", backref='user', uselist=False) # JOIN SQL ONE TO ONE
     contacts = db.relationship('Contact', cascade="all, delete", backref="user") # JOIN SQL ONE TO MANY
+    roles = db.relationship('Role', cascade="all, delete", secondary="roles_user") # JOIN SQL MANY TO MANY
 
     def serialize(self):
         return {
@@ -20,6 +21,15 @@ class User(db.Model):
             "email": self.email
         }
 
+    def serialize_with_roles(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "lastname": self.lastname,
+            "email": self.email,
+            "roles": self.get_roles()
+        }
+
     def serialize_with_profile(self):
         return {
             "id": self.id,
@@ -27,7 +37,8 @@ class User(db.Model):
             "lastname": self.lastname,
             "email": self.email,
             "profile": self.profile.serialize(),
-            "contacts": self.get_contacts() 
+            "contacts": self.get_contacts(),
+            "roles": self.get_roles() 
         }
 
         """
@@ -50,6 +61,8 @@ class User(db.Model):
     def get_contacts(self):
         return list(map(lambda contact: contact.serialize(), self.contacts))
 
+    def get_roles(self):
+        return list(map(lambda role: role.serialize(), self.roles))
 
     def save(self):
         db.session.add(self)
@@ -137,3 +150,44 @@ class Contact(db.Model):
     def delete(self):
         db.session.delete(self)
         db.session.commit()
+
+
+class Role(db.Model):
+    __tablename__ = 'roles'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    users = db.relationship('User', cascade="all, delete", secondary="roles_user")
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "name": self.name
+        }
+
+    def serialize_with_users(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "users": self.get_users()
+        }
+
+    def get_users(self):
+        return list(map(lambda user: { "id": user.id, "name": user.name }, self.users))
+
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+
+    def update(self):
+        db.session.commit()
+
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()
+
+
+class RoleUser(db.Model):
+    __tablename__ = 'roles_user'
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+    
